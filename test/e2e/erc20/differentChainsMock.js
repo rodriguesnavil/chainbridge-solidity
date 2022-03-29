@@ -4,7 +4,9 @@ const Ethers = require('ethers');
 const Helpers = require('../../helpers');
 
 const BridgeContract = artifacts.require("Bridge");
-const ERC20MintableContract = artifacts.require("ERC20PresetMinterPauser");
+// const ERC20MintableContract = artifacts.require("ERC20PresetMinterPauser");
+const IDCToken = artifacts.require("IDCToken");
+const GAMEToken = artifacts.require("GAMEToken");
 const ERC20HandlerContract = artifacts.require("ERC20Handler");
 
 contract('E2E ERC20 - Two EVM Chains', async accounts => {
@@ -50,8 +52,8 @@ contract('E2E ERC20 - Two EVM Chains', async accounts => {
         await Promise.all([
             BridgeContract.new(originChainID, [originRelayer1Address, originRelayer2Address], originRelayerThreshold, 0, 100).then(instance => OriginBridgeInstance = instance),
             BridgeContract.new(destinationChainID, [destinationRelayer1Address, destinationRelayer2Address], destinationRelayerThreshold, 0, 100).then(instance => DestinationBridgeInstance = instance),
-            ERC20MintableContract.new("token", "TOK").then(instance => OriginERC20MintableInstance = instance),
-            ERC20MintableContract.new("token", "TOK").then(instance => DestinationERC20MintableInstance = instance)
+            IDCToken.new("iCraft Donbangseok Coin", "IDC").then(instance => OriginERC20MintableInstance = instance),
+            GAMEToken.new("iCraft Game Token", "IGT").then(instance => DestinationERC20MintableInstance = instance)
         ]);
 
         originResourceID = Helpers.createResourceID(OriginERC20MintableInstance.address, originChainID);
