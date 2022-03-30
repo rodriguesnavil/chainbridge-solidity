@@ -52,8 +52,8 @@ contract('E2E ERC20 - Two EVM Chains', async accounts => {
         await Promise.all([
             BridgeContract.new(originChainID, [originRelayer1Address, originRelayer2Address], originRelayerThreshold, 0, 100).then(instance => OriginBridgeInstance = instance),
             BridgeContract.new(destinationChainID, [destinationRelayer1Address, destinationRelayer2Address], destinationRelayerThreshold, 0, 100).then(instance => DestinationBridgeInstance = instance),
-            IDCToken.new("iCraft Donbangseok Coin", "IDC").then(instance => OriginERC20MintableInstance = instance),
-            GAMEToken.new("iCraft Game Token", "IGT").then(instance => DestinationERC20MintableInstance = instance)
+            IDCToken.new().then(instance => OriginERC20MintableInstance = instance),
+            GAMEToken.new().then(instance => DestinationERC20MintableInstance = instance)
         ]);
 
         originResourceID = Helpers.createResourceID(OriginERC20MintableInstance.address, originChainID);
