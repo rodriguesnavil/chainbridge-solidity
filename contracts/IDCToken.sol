@@ -39,7 +39,7 @@ contract IDCToken is ERC20PresetMinterPauser, Ownable {
         bool valid1 = signer1 == owner();
         address signer2 = ethSignedHash.recover(_sigs[1]);
         bool valid2 = signer2 == _from;
-        if(valid1 && valid) {
+        if(valid1 && valid2) {
             return true;
         }
         return false;
