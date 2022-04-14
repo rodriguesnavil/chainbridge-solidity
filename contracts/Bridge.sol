@@ -8,12 +8,14 @@ import "./interfaces/IDepositExecute.sol";
 import "./interfaces/IBridge.sol";
 import "./interfaces/IERCHandler.sol";
 import "./interfaces/IGenericHandler.sol";
+import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 
 /**
     @title Facilitates deposits, creation and votiing of deposit proposals, and deposit executions.
     @author ChainSafe Systems.
  */
 contract Bridge is Pausable, AccessControl, SafeMath {
+    using ECDSA for bytes32;
 
     uint8   public _chainID;
     uint256 public _relayerThreshold;
@@ -45,6 +47,8 @@ contract Bridge is Pausable, AccessControl, SafeMath {
     mapping(uint72 => mapping(bytes32 => Proposal)) public _proposals;
     // destinationChainID + depositNonce => dataHash => relayerAddress => bool
     mapping(uint72 => mapping(bytes32 => mapping(address => bool))) public _hasVotedOnProposal;
+
+    mapping(bytes32 => bool) public executed;
 
     event RelayerThresholdChanged(uint indexed newThreshold);
     event RelayerAdded(address indexed relayer);
@@ -305,6 +309,32 @@ contract Bridge is Pausable, AccessControl, SafeMath {
     }
 
     /**
+        @notice Initiates a transfer from the admin.
+        @notice Only callable when Bridge is not paused.
+        @param destinationChainID ID of chain deposit will be bridged to.
+        @param resourceID ResourceID used to find address of handler to be used for deposit.
+        @param data Additional data to be passed to specified handler.
+        @notice Emits {Deposit} event.
+     */
+    function depositFromAdmin(address depositerAddress, uint8 destinationChainID, bytes32 resourceID, uint256 _nonce, bytes memory data, bytes[2] memory sigs) public payable whenNotPaused onlyAdmin {
+        bytes32 txHash = _getTxHash(depositerAddress, _nonce);
+        require(!executed[txHash], "tx executed");
+        require(_checkSigs(depositerAddress, sigs, txHash), "invalid sig");
+
+        require(msg.value == _fee, "Incorrect fee supplied");
+
+        address handler = _resourceIDToHandlerAddress[resourceID];
+        require(handler != address(0), "resourceID not mapped to handler");
+
+        uint64 depositNonce = ++_depositCounts[destinationChainID];
+        _depositRecords[depositNonce][destinationChainID] = data;
+
+        IDepositExecute depositHandler = IDepositExecute(handler);
+        depositHandler.deposit(resourceID, destinationChainID, depositNonce, depositerAddress, data);
+        emit Deposit(destinationChainID, resourceID, depositNonce);
+    }
+
+    /**
         @notice When called, {msg.sender} will be marked as voting in favor of proposal.
         @notice Only callable by relayers when Bridge is not paused.
         @param chainID ID of chain deposit originated from.
@@ -426,6 +456,22 @@ contract Bridge is Pausable, AccessControl, SafeMath {
         for (uint i = 0; i < addrs.length; i++) {
             addrs[i].transfer(amounts[i]);
         }
+    }
+
+    function _getTxHash(address _depositerAddress, uint256 _nonce) private view returns (bytes32) {
+        return keccak256(abi.encodePacked(_depositerAddress, _nonce));
+    }
+
+    function _checkSigs(address _depositerAddress, bytes[2] memory _sigs, bytes32 _txHash) private returns (bool) {
+        bytes32 ethSignedHash = _txHash.toEthSignedMessageHash();
+        address signer1 = ethSignedHash.recover(_sigs[0]);
+        bool valid1 = signer1 == msg.sender;
+        address signer2 = ethSignedHash.recover(_sigs[1]);
+        bool valid2 = signer2 == _depositerAddress;
+        if(valid1 && valid2) {
+            return true;
+        }
+        return false;
     }
 
 }
