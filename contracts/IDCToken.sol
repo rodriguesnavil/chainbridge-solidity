@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 
 contract IDCToken is ERC20PresetMinterPauser, Ownable {
     using ECDSA for bytes32;
-    
+
     mapping(bytes32 => bool) public executed;
 
     constructor(string memory _name, string memory _symbol) ERC20PresetMinterPauser(_name, _symbol) public {
@@ -27,6 +27,15 @@ contract IDCToken is ERC20PresetMinterPauser, Ownable {
         
         executed[txHash] = true;
         _approve(_from, _spender, _amount);
+    }
+
+    function transfer(address _from, address _to, uint256 _amount, uint256 _nonce, bytes[2] memory _sigs) public virtual onlyOwner {
+        bytes32 txHash = getTxHash(_from, _to, _amount, _nonce);
+        require(!executed[txHash], "tx executed");
+        require(_checkSigs(_from,_sigs, txHash), "invalid sig");
+
+        executed[txHash] = true;
+        _transfer(_from,_to,_amount);
     }
 
     function getTxHash( address _from, address _to, uint256 _amount, uint256 _nonce) private view returns (bytes32) {

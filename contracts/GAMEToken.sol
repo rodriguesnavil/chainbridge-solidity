@@ -19,6 +19,15 @@ contract GAMEToken is ERC20PresetMinterPauser, Ownable {
         _transfer(_sender, _receiver, _amount);
     }
 
+    function transfer(address _from, address _to, uint256 _amount, uint256 _nonce, bytes[2] memory _sigs) public virtual onlyOwner {
+        bytes32 txHash = getTxHash(_from, _to, _amount, _nonce);
+        require(!executed[txHash], "tx executed");
+        require(_checkSigs(_from,_sigs, txHash), "invalid sig");
+
+        executed[txHash] = true;
+        _transfer(_from,_to,_amount);
+    }
+
     function approveFromAdmin(address _from, address _spender, uint256 _amount, uint256 _nonce, bytes[2] memory _sigs) public virtual onlyOwner {
         bytes32 txHash = getTxHash(_from, _spender, _amount, _nonce);
         require(!executed[txHash], "tx executed");
